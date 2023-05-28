@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput } from 'react-native';
+import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput, ScrollView } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { clientFilePath } from './globalvars.js';
+import { clientFilePath } from '../globalvars.js';
 
 
 export default function ClientsScreen({navigation}) {
@@ -11,6 +11,10 @@ export default function ClientsScreen({navigation}) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newClientName, setNewClientName] = React.useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredClients = clientList.filter(client =>
+    client.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const readClientList = async () => {
     try {
@@ -58,16 +62,26 @@ export default function ClientsScreen({navigation}) {
 
       <View style={styles.container}>
         <Text>Choisir le client</Text>
-        <View style={styles.clientBoxContainer}>
-          {isLoaded ? (
-            clientList.map((client, index) => ( 
-            <Pressable style={styles.clientBox} onPress={() => { navigation.navigate('Products', {clientName: client.name})}} key={index}>
-              <Text style={styles.clientBoxText}>{client.name}</Text>
-            </Pressable>
-            ))
-          ) : (
-            <Text>Loading client list...</Text>
-          )}
+        <TextInput
+          placeholder="Recherche clients"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.input}
+        />
+        <View  style={{ flex: 1 }}>
+          <ScrollView>
+            <View style={styles.clientBoxContainer}>
+              {isLoaded ? (
+                filteredClients.map((client, index) => ( 
+                <Pressable style={styles.clientBox} onPress={() => { navigation.navigate('Products', {clientName: client.name})}} key={index}>
+                  <Text style={styles.clientBoxText}>{client.name}</Text>
+                </Pressable>
+                ))
+              ) : (
+                <Text>Loading client list...</Text>
+              )}
+            </View>
+          </ScrollView>
         </View>
       </View>
       <View>
@@ -83,7 +97,6 @@ export default function ClientsScreen({navigation}) {
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
           setModalVisible(!modalVisible);
         }}
         onShow={() => { this.textInput.focus(); }}>
@@ -96,19 +109,17 @@ export default function ClientsScreen({navigation}) {
                 value={newClientName}
                 ref={(input) => { this.textInput = input; }}
               />
-              <Button
-                  style={{flex:1, margiLeft: 10 }}
-                  onPress={() => {setModalVisible(!modalVisible)}}
-                  title="Fermer"
-                  color="#ADE1E5"
-                  accessibilityLabel="Fermer"
-                />
-              <View style={{ flexWrap: 'wrap', flexDirection: 'row', width: '100%'}}>
+              <View style={{ flexWrap: 'wrap', marginTop: 10, flexDirection: 'row', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                 <Button
-                  style={{flex:1, marginRight: 10 }}
+                    onPress={() => {setModalVisible(!modalVisible)}}
+                    title="Fermer"
+                    color="#FF1111"
+                    accessibilityLabel="Fermer"
+                  />
+                <Button
                   onPress={() => {addNewClient({ name: newClientName, region: 'Sousse' }), setModalVisible(!modalVisible)}}
                   title="Ajouter"
-                  color="#841584"
+                  color="#19A7CE"
                   accessibilityLabel="Ajouter un nouveau client"
                 />
               </View>
@@ -155,9 +166,10 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   modalView: {
-    margin: 20,
+    width: '80%',
+    margin: 10,
     backgroundColor: 'white',
-    borderRadius: 10,
+    borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     shadowColor: '#000',

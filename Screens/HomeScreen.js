@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,Tex
 import * as FileSystem from 'expo-file-system';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ordersFilePath } from './globalvars.js';
+import { ordersFilePath } from '../globalvars.js';
 
 
 export default function HomeScreen({route, navigation}) {
@@ -32,38 +32,39 @@ export default function HomeScreen({route, navigation}) {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      {/* <View
-       style={{
-         height: 60,
-         backgroundColor: 'purple',
-         alignContent: 'center',
-         justifyContent: 'center',
-         paddingHorizontal: 16,
-       }}>
-       <Text style={{ color: 'white', fontWeight: 'bold', paddingTop: 30 }}>Distribution PRO</Text>
-     </View> */}
 
       <View style={styles.container}>
-        <Text style={{fontSize: 22}}>Liste des commandes</Text>
+        <Text style={{fontSize: 22, margin: 10}}>Liste des factures</Text>
         <View>
           {isLoaded ? (
-            ordersList.map((orderRow, index) => ( 
-            <Pressable style={{borderBottomWidth: 2, borderBottomColor: "#000", padding: 10}} onPress={() => { navigation.navigate('DetailOrder', {orderRow: orderRow}) }} key={index}>
-              <Text>Client: {orderRow.clientName}</Text>
-              <Text>Date commande : {orderRow.orderDate}</Text>
-            </Pressable>
-            ))
+            (
+              ordersList.length ? 
+              ordersList.map((orderRow, indexOfOrder) => ( 
+              <Pressable style={{borderBottomWidth: 2, borderBottomColor: "#000", padding: 10}} onPress={() => { navigation.navigate('DetailOrder', {orderRow, indexOfOrder}) }} key={indexOfOrder}>
+                <Text>Client: {orderRow.clientName}</Text>
+                <Text>Date facture : {orderRow.orderDate}</Text>
+              </Pressable>
+              ))
+              : <Text style={{margin: 10}}>Aucune facture</Text>
+            )
           ) : (
-            <Text>Loading commandes list...</Text>
+            <Text>Loading factures list...</Text>
           )}
         </View>
       </View>
       <View>
         <Button
           onPress={() => {navigation.navigate('Clients')}}
-          title="Passer une commande"
+          title="Passer une facture"
           color="#841584"
-          accessibilityLabel="Passer une nouvelle commande"
+          accessibilityLabel="Passer une nouvelle facture"
+        />
+        <View style={{height: 10}}></View>
+        <Button
+          onPress={() => {navigation.navigate('MaPoche')}}
+          title="Ma Poche"
+          color="#841584"
+          accessibilityLabel="Ma Poche"
         />
      </View>
     </SafeAreaView>

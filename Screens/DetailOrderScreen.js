@@ -3,10 +3,35 @@ import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,Tex
 import * as FileSystem from 'expo-file-system';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
+import { ordersFilePath } from '../globalvars.js';
 
 export default function DetailOrderScreen({route, navigation}) {
-  const { orderRow } = route.params;
+  const { orderRow, indexOfOrder } = route.params;
+  function getTotalFacture(cartRows){
+    let totalFacture = 0;
+    cartRows.map((cartRow, index) => ( 
+      totalFacture += (cartRow.productPrice * cartRow.productQuantity)
+    ));
+    return totalFacture +' dt';
+  }
+
+  const deleteFacture = async () => {
+    try {
+      const fileExists = await FileSystem.getInfoAsync(ordersFilePath);
+      if (!fileExists.exists) {
+        await FileSystem.writeAsStringAsync(ordersFilePath, '[]');
+      }
+      const fileContents = await FileSystem.readAsStringAsync(ordersFilePath);
+      const parsedOrdersList = JSON.parse(fileContents);
+      if (indexOfOrder > -1) {
+        parsedOrdersList.splice(indexOfOrder, 1);
+      }
+      await FileSystem.writeAsStringAsync(ordersFilePath, JSON.stringify(parsedOrdersList));
+      navigation.navigate('Home', { refreshOrdersList: 1 });
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -22,23 +47,33 @@ export default function DetailOrderScreen({route, navigation}) {
      </View> */}
 
       <View style={{borderBottomWidth: 2, borderBottomColor: "#000", padding: 10}}>
-        <Text style={{fontSize: 22}}>Détail de la commande</Text>
+        <Text style={{fontSize: 22}}>Détail de la facture</Text>
         <Text style={{fontSize: 18}}>Client : {orderRow.clientName}</Text>
         <Text style={{fontSize: 18}}>Date : {orderRow.orderDate}</Text>
       </View>
-      <View style={{padding: 15}}>
+      <View style={styles.container}>
         {orderRow.cartRows.length ? (
           
           orderRow.cartRows.map((cartRow, index) => (
             <View style={{borderBottomWidth: 1, borderBottomColor: "#B0DAFF", padding: 10}} key={index}>
-              <Text style={{fontSize: 20, fontWeight: 700}}>{cartRow.productQuantity}x {cartRow.productName}</Text>
+                <Text style={{fontSize: 22, fontWeight: 'bold' }}>{cartRow.productQuantity}x {cartRow.productName} </Text>
+                <Text style={{fontSize: 22 }}>{cartRow.productQuantity} x {cartRow.productPrice}{' dt'} = {cartRow.productQuantity * cartRow.productPrice}dt</Text>
             </View>
           ))
           
         ) : 
           <Text>Pas de produits</Text>
         }
+        <Text style={{fontSize: 24, fontWeight: 'bold', padding: 10}}>Total {getTotalFacture(orderRow.cartRows)}</Text>
       </View>
+      <View>
+        <Button
+          onPress={() => {deleteFacture()}}
+          title="Supprimer la facture"
+          color="#FF1111"
+          accessibilityLabel="Supprimer la facture"
+        />
+     </View>
     </SafeAreaView>
   );
 }

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput } from 'react-native';
+import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput, Label, ScrollView } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { productFilePath,ordersFilePath } from './globalvars.js';
+import { productFilePath,ordersFilePath } from '../globalvars.js';
 import Moment from 'moment';
 
 
@@ -15,9 +15,16 @@ export default function ProductsScreen({ route, navigation }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalQuantityVisible, setModalQuantityVisible] = useState(false);
   const [newProductName, setNewProductName] = React.useState('');
+  const [newProductPrice, setNewProductPrice] = React.useState('');
   const [productName, setProductName] = React.useState('');
   const [productQuantity, setProductQuantity] = React.useState(0);
+  const [productPrice, setProductPrice] = React.useState(0);
   const [cartRows, setCartRows] = React.useState([]);
+  const [indexOfProduct, setIndexOfProduct] = React.useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const filteredProducts = productList.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const readProductList = async () => {
     try {
@@ -73,53 +80,86 @@ export default function ProductsScreen({ route, navigation }) {
     readProductList();
   }, []);
 
+  function getTotalFacture(cartRows){
+    let totalFacture = 0;
+    cartRows.map((cartRow, index) => ( 
+      totalFacture += (cartRow.productPrice * cartRow.productQuantity)
+    ));
+    return totalFacture +' dt';
+  }
+
+  const updateProductPriceIdDiff = async (productPriceUpdate) => {
+    try {
+      const fileExists = await FileSystem.getInfoAsync(productFilePath);
+      if (!fileExists.exists) {
+        await FileSystem.writeAsStringAsync(productFilePath, '[]');
+      }
+      const fileContents = await FileSystem.readAsStringAsync(productFilePath);
+      const parsedProductList = JSON.parse(fileContents);
+      parsedProductList[indexOfProduct].price = productPriceUpdate;
+      FileSystem.writeAsStringAsync(productFilePath, JSON.stringify(parsedProductList));
+      setProductList(parsedProductList);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View
        style={{
-         height: 60,
          backgroundColor: 'purple',
          alignContent: 'center',
          justifyContent: 'center',
          paddingHorizontal: 16,
          marginBottom: 15
        }}>
-       <Text style={{ fontSize: 18, color: 'white', fontWeight: 'bold', paddingTop: 30 }}>Commande client : {clientName}</Text>
+       <Text style={{ fontSize: 18, color: 'white', fontWeight: 'bold', paddingTop: 15, paddingBottom: 15 }}>Facture client : {clientName}</Text>
      </View>
      <View>
       {cartRows.length ? 
         <View style={{paddingBottom: 20}}>
           {cartRows.map((cartRow, index) => ( 
           <View key={index}>
-            <Text style={{marginBottom: 10, fontSize:16 }}>{cartRow.productQuantity}x {cartRow.productName}</Text>
+            <Text style={{marginBottom: 10, fontSize:16 }}>{cartRow.productQuantity}x {cartRow.productName} ({cartRow.productPrice}{' dt'}) = <Text style={{fontWeight: 'bold'}}>{cartRow.productQuantity * cartRow.productPrice}dt</Text></Text>
           </View>
           ))}
           <Button
             onPress={() => {
               addNewOrder()
             }}
-            title="Valider la commande"
+            title={`Valider la facture (${getTotalFacture(cartRows)})`}
             color="#19A7CE"
-            accessibilityLabel="Valide la commande"
+            accessibilityLabel="Valide la facture"
           />
         </View>
       : (
-        <Text>Commande vide</Text>
+        <Text style={{textAlign: 'center', marginBottom: 10}}>Facture vide, merci de selectionner des produits ci dessous.</Text>
       )}
      </View>
 
-      <View style={styles.container}>
-        <Text>Choisir les produits</Text>
-        <View style={styles.productBoxContainer}>
-          {isLoaded ? (
-            productList.map((product, index) => ( 
-            <Pressable style={styles.productBox} onPress={() => {setProductName(product.name), setProductQuantity(''), setModalQuantityVisible(!modalQuantityVisible)}} key={index}>
-              <Text style={styles.productBoxText}>{product.name}</Text>
-            </Pressable>
-            ))
-          ) : (
-            <Text>Loading product list...</Text>
-          )}
+      <View  style={{ flex: 1 }}>
+        <Text style={{ fontWeight: 'bold', marginTop: 15, fontSize: 22}}>Choisir les produits</Text>
+        <TextInput
+          placeholder="Recherche produits"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.input}
+        />
+          <View  style={{ flex: 1 }}>
+            <ScrollView>
+                <View style={styles.productBoxContainer}>
+                {isLoaded ? (
+                  filteredProducts.map((product, index) => ( 
+                  <Pressable style={styles.productBox} onPress={() => {setProductName(product.name),setProductPrice(product.price ? product.price : 0), setProductQuantity(''),setIndexOfProduct(index), setModalQuantityVisible(!modalQuantityVisible)}} key={index}>
+                    <Text style={styles.productBoxText}>{product.name}{'\n'}({product.price}{' dt'})</Text>
+                  </Pressable>
+                  ))
+                ) : (
+                  <Text>Loading product list...</Text>
+                )}
+              </View>
+            </ScrollView>
         </View>
       </View>
       <View>
@@ -135,7 +175,6 @@ export default function ProductsScreen({ route, navigation }) {
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
           setModalVisible(!modalVisible);
         }}
         onShow={() => { this.textInput.focus(); }}
@@ -143,26 +182,34 @@ export default function ProductsScreen({ route, navigation }) {
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
             <Text style={styles.modalText}>Nouveau produit</Text>
+              <Text>Nom produit :</Text>
               <TextInput
                 style={styles.input}
                 onChangeText={setNewProductName}
-                value={newProductName}
+                value={newProductName.toString()}
                 ref={(input) => { this.textInput = input; }}
               />
-              <View style={{ flexWrap: 'wrap', flexDirection: 'row', width: '100%'}}>
+              <Text>Prix unitaire :</Text>
+              <TextInput
+                keyboardType='numeric'
+                style={styles.input}
+                onChangeText={setNewProductPrice}
+                value={newProductPrice.toString()}
+              />
+              <View style={{ flexWrap: 'wrap', marginTop: 10, flexDirection: 'row', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                 <Button
                   onPress={() => {setModalVisible(!modalVisible)}}
                   title="Fermer"
-                  color="#ADE1E5"
+                  color="#FF1111"
                   accessibilityLabel="Fermer"
                 />
                 <Button
-                  onPress={() => {addNewProduct({ name: newProductName }), setModalVisible(!modalVisible)}}
+                  onPress={() => {addNewProduct({ name: newProductName, price : newProductPrice }), setModalVisible(!modalVisible)}}
                   title="Ajouter"
-                  color="#841584"
+                  color="#19A7CE"
                   accessibilityLabel="Ajouter un nouveau produit"
                 />
-            </View>
+              </View>
           </View>
         </View>
       </Modal>
@@ -171,7 +218,6 @@ export default function ProductsScreen({ route, navigation }) {
         transparent={true}
         visible={modalQuantityVisible}
         onRequestClose={() => {
-          Alert.alert('Modal has been closed.');
           setModalVisible(!modalQuantityVisible);
         }}
         onShow={() => { this.textInput.focus(); }}>
@@ -185,18 +231,30 @@ export default function ProductsScreen({ route, navigation }) {
                 value={productQuantity.toString()}
                 ref={(input) => { this.textInput = input; }}
               />
-              <View style={{ flexWrap: 'wrap', flexDirection: 'row', width: '100%'}}>
+              <Text>Prix unitaire :</Text>
+              <TextInput
+                keyboardType='numeric'
+                style={styles.input}
+                onChangeText={setProductPrice}
+                value={productPrice.toString()}
+              />
+              <Text>Total : {productQuantity.toString()} x {productPrice} = {productQuantity * productPrice}</Text>
+              <View style={{ flexWrap: 'wrap', marginTop: 10, flexDirection: 'row', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                 <Button
                   onPress={() => {setModalQuantityVisible(!modalQuantityVisible)}}
                   title="Fermer"
-                  color="#ADE1E5"
+                  color="#FF1111"
                   accessibilityLabel="Fermer"
                 />
                 <Button
-                  onPress={() => {addNewProductToCart({ productName: productName, productQuantity: productQuantity }), setModalQuantityVisible(!modalQuantityVisible)}}
+                  onPress={() => {
+                    addNewProductToCart({ productName: productName, productPrice: productPrice, productQuantity: productQuantity }),
+                    setModalQuantityVisible(!modalQuantityVisible),
+                    updateProductPriceIdDiff(productPrice)
+                  }}
                   title="Ajouter"
-                  color="#841584"
-                  accessibilityLabel="Quantité"
+                  color="#19A7CE"
+                  accessibilityLabel="Ajouter"
                 />
               </View>
           </View>
@@ -239,10 +297,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 22,
+    marginTop: 0,
   },
   modalView: {
-    margin: 20,
+    width: '80%',
+    margin: 10,
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 20,
