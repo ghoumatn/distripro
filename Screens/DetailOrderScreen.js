@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput } from 'react-native';
+import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput, ScrollView } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -52,18 +52,19 @@ export default function DetailOrderScreen({route, navigation}) {
         <Text style={{fontSize: 18}}>Date : {orderRow.orderDate}</Text>
       </View>
       <View style={styles.container}>
-        {orderRow.cartRows.length ? (
-          
-          orderRow.cartRows.map((cartRow, index) => (
-            <View style={{borderBottomWidth: 1, borderBottomColor: "#B0DAFF", padding: 10}} key={index}>
-                <Text style={{fontSize: 22, fontWeight: 'bold' }}>{cartRow.productQuantity}x {cartRow.productName} </Text>
-                <Text style={{fontSize: 22 }}>{cartRow.productQuantity} x {cartRow.productPrice}{' dt'} = {cartRow.productQuantity * cartRow.productPrice}dt</Text>
-            </View>
-          ))
-          
-        ) : 
-          <Text>Pas de produits</Text>
-        }
+        <ScrollView>
+          {orderRow.cartRows.length ? (
+            orderRow.cartRows.map((cartRow, index) => (
+              <View style={{borderBottomWidth: 1, borderBottomColor: "#B0DAFF", padding: 10}} key={index}>
+                  <Text style={{fontSize: 22, fontWeight: 'bold' }}>{cartRow.productQuantity}x {cartRow.productName} </Text>
+                  <Text style={{fontSize: 22 }}>{cartRow.productQuantity} x {cartRow.productPrice}{' dt'} = {cartRow.productQuantity * cartRow.productPrice}dt</Text>
+              </View>
+            ))
+            
+          ) : 
+            <Text>Pas de produits</Text>
+          }
+        </ScrollView>
         <Text style={{fontSize: 24, fontWeight: 'bold', padding: 10}}>Total {getTotalFacture(orderRow.cartRows)}</Text>
       </View>
       <View>

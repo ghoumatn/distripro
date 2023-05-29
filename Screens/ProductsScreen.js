@@ -14,6 +14,7 @@ export default function ProductsScreen({ route, navigation }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalQuantityVisible, setModalQuantityVisible] = useState(false);
+  const [modalProductDelVisible, setModalProductDelVisible] = useState(false);
   const [newProductName, setNewProductName] = React.useState('');
   const [newProductPrice, setNewProductPrice] = React.useState('');
   const [productName, setProductName] = React.useState('');
@@ -104,6 +105,22 @@ export default function ProductsScreen({ route, navigation }) {
     }
   }
 
+  const deleteProduct = async () => {
+    try {
+      const fileExists = await FileSystem.getInfoAsync(productFilePath);
+      if (!fileExists.exists) {
+        await FileSystem.writeAsStringAsync(productFilePath, '[]');
+      }
+      const fileContents = await FileSystem.readAsStringAsync(productFilePath);
+      const parsedProductList = JSON.parse(fileContents);
+      parsedProductList.splice(indexOfProduct, 1);
+      FileSystem.writeAsStringAsync(productFilePath, JSON.stringify(parsedProductList));
+      setProductList(parsedProductList);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View
@@ -118,12 +135,14 @@ export default function ProductsScreen({ route, navigation }) {
      </View>
      <View>
       {cartRows.length ? 
-        <View style={{paddingBottom: 20}}>
-          {cartRows.map((cartRow, index) => ( 
-          <View key={index}>
-            <Text style={{marginBottom: 10, fontSize:16 }}>{cartRow.productQuantity}x {cartRow.productName} ({cartRow.productPrice}{' dt'}) = <Text style={{fontWeight: 'bold'}}>{cartRow.productQuantity * cartRow.productPrice}dt</Text></Text>
-          </View>
-          ))}
+        <View style={{paddingBottom: 20, maxHeight: 250}}>
+          <ScrollView>
+            {cartRows.map((cartRow, index) => ( 
+            <View key={index}>
+              <Text style={{marginBottom: 10, fontSize:16 }}>{cartRow.productQuantity}x {cartRow.productName} ({cartRow.productPrice}{' dt'}) = <Text style={{fontWeight: 'bold'}}>{cartRow.productQuantity * cartRow.productPrice}dt</Text></Text>
+            </View>
+            ))}
+          </ScrollView>
           <Button
             onPress={() => {
               addNewOrder()
@@ -151,7 +170,10 @@ export default function ProductsScreen({ route, navigation }) {
                 <View style={styles.productBoxContainer}>
                 {isLoaded ? (
                   filteredProducts.map((product, index) => ( 
-                  <Pressable style={styles.productBox} onPress={() => {setProductName(product.name),setProductPrice(product.price ? product.price : 0), setProductQuantity(''),setIndexOfProduct(index), setModalQuantityVisible(!modalQuantityVisible)}} key={index}>
+                  <Pressable style={styles.productBox} 
+                    onPress={() => {setProductName(product.name),setProductPrice(product.price ? product.price : 0), setProductQuantity(''),setIndexOfProduct(index), setModalQuantityVisible(!modalQuantityVisible)}} 
+                    onLongPress={() => {setIndexOfProduct(index), setModalProductDelVisible(true)}} 
+                    key={index}>
                     <Text style={styles.productBoxText}>{product.name}{'\n'}({product.price}{' dt'})</Text>
                   </Pressable>
                   ))
@@ -164,7 +186,7 @@ export default function ProductsScreen({ route, navigation }) {
       </View>
       <View>
         <Button
-          onPress={() => {setModalVisible(!modalVisible), setNewProductName('')}}
+          onPress={() => {setNewProductPrice(0),setModalVisible(!modalVisible), setNewProductName('')}}
           title="Ajouter product"
           color="#841584"
           accessibilityLabel="Ajouter un nouveau product"
@@ -255,6 +277,37 @@ export default function ProductsScreen({ route, navigation }) {
                   title="Ajouter"
                   color="#19A7CE"
                   accessibilityLabel="Ajouter"
+                />
+              </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalProductDelVisible}
+        onRequestClose={() => {
+          setModalProductDelVisible(!modalProductDelVisible);
+        }}
+        >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Confirmation suppression produit</Text>
+              <Text>Nom produit : {productList && productList[indexOfProduct] ? productList[indexOfProduct].name : '--'}</Text>
+              <View style={{ flexWrap: 'wrap', marginTop: 10, flexDirection: 'row', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <Button
+                  onPress={() => {setModalProductDelVisible(!modalProductDelVisible), deleteProduct()}}
+                  title="Supprimer"
+                  color="#FF1111"
+                  accessibilityLabel="Supprimer"
+                />
+                <Button
+                  onPress={() => {
+                    setModalProductDelVisible(false)
+                  }}
+                  title="Fermer"
+                  color="#19A7CE"
+                  accessibilityLabel="Fermer"
                 />
               </View>
           </View>

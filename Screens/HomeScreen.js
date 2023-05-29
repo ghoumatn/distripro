@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput } from 'react-native';
+import { StyleSheet, Text, View, Box, Pressable, Button, SafeAreaView, Modal,TextInput, ScrollView } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -9,6 +9,8 @@ import { ordersFilePath } from '../globalvars.js';
 export default function HomeScreen({route, navigation}) {
   const [ordersList, setOrdersList] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [modalOrderDelVisible, setModalOrderDelVisible] = useState(false);
+  const [indexOfOrder, setIndexOfOrder] = useState(0);
 
   const readOrderList = async () => {
     try {
@@ -25,6 +27,22 @@ export default function HomeScreen({route, navigation}) {
     }
   };
 
+  const deleteOrder = async () => {
+    try {
+      const fileExists = await FileSystem.getInfoAsync(ordersFilePath);
+      if (!fileExists.exists) {
+        await FileSystem.writeAsStringAsync(ordersFilePath, '[]');
+      }
+      const fileContents = await FileSystem.readAsStringAsync(ordersFilePath);
+      const parsedOrderList = JSON.parse(fileContents);
+      parsedOrderList.splice(indexOfOrder, 1);
+      FileSystem.writeAsStringAsync(ordersFilePath, JSON.stringify(parsedOrderList));
+      setOrdersList(parsedOrderList);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
 
   useEffect(() => {
     readOrderList();
@@ -36,20 +54,25 @@ export default function HomeScreen({route, navigation}) {
       <View style={styles.container}>
         <Text style={{fontSize: 22, margin: 10}}>Liste des factures</Text>
         <View>
-          {isLoaded ? (
-            (
-              ordersList.length ? 
-              ordersList.map((orderRow, indexOfOrder) => ( 
-              <Pressable style={{borderBottomWidth: 2, borderBottomColor: "#000", padding: 10}} onPress={() => { navigation.navigate('DetailOrder', {orderRow, indexOfOrder}) }} key={indexOfOrder}>
-                <Text>Client: {orderRow.clientName}</Text>
-                <Text>Date facture : {orderRow.orderDate}</Text>
-              </Pressable>
-              ))
-              : <Text style={{margin: 10}}>Aucune facture</Text>
-            )
-          ) : (
-            <Text>Loading factures list...</Text>
-          )}
+          <ScrollView>
+            {isLoaded ? (
+              (
+                ordersList.length ? 
+                ordersList.map((orderRow, indexOfOrder) => ( 
+                <Pressable style={{borderBottomWidth: 2, borderBottomColor: "#000", padding: 10}} 
+                  onPress={() => { navigation.navigate('DetailOrder', {orderRow, indexOfOrder}) }} 
+                  onLongPress={() => {setIndexOfOrder(indexOfOrder), setModalOrderDelVisible(true)}} 
+                  key={indexOfOrder}>
+                  <Text>Client: {orderRow.clientName}</Text>
+                  <Text>Date facture : {orderRow.orderDate}</Text>
+                </Pressable>
+                ))
+                : <Text style={{margin: 10}}>Aucune facture</Text>
+              )
+            ) : (
+              <Text>Loading factures list...</Text>
+            )}
+          </ScrollView>
         </View>
       </View>
       <View>
@@ -67,6 +90,40 @@ export default function HomeScreen({route, navigation}) {
           accessibilityLabel="Ma Poche"
         />
      </View>
+     <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalOrderDelVisible}
+        onRequestClose={() => {
+          setModalOrderDelVisible(!modalOrderDelVisible);
+        }}
+        >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Confirmation suppression facture</Text>
+              <View>
+                <Text>Nom client : {ordersList && ordersList[indexOfOrder] ? ordersList[indexOfOrder].clientName : '--'}</Text>
+                <Text>Date facture : {ordersList && ordersList[indexOfOrder] ? ordersList[indexOfOrder].orderDate : '--'}</Text>
+              </View>
+              <View style={{ flexWrap: 'wrap', marginTop: 10, flexDirection: 'row', width: '100%', gap: 10 }}>
+                <Button
+                  onPress={() => {setModalOrderDelVisible(!modalOrderDelVisible), deleteOrder()}}
+                  title="Supprimer"
+                  color="#FF1111"
+                  accessibilityLabel="Supprimer"
+                />
+                <Button
+                  onPress={() => {
+                    setModalOrderDelVisible(false)
+                  }}
+                  title="Annuler"
+                  color="#19A7CE"
+                  accessibilityLabel="Annuler"
+                />
+              </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

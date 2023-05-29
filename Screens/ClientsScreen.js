@@ -12,6 +12,8 @@ export default function ClientsScreen({navigation}) {
   const [modalVisible, setModalVisible] = useState(false);
   const [newClientName, setNewClientName] = React.useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [modalClientDelVisible, setModalClientDelVisible] = useState(false);
+  const [indexOfClient, setIndexOfClient] = useState(0);
   const filteredClients = clientList.filter(client =>
     client.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -43,6 +45,22 @@ export default function ClientsScreen({navigation}) {
     }
   };
 
+  const deleteClient = async () => {
+    try {
+      const fileExists = await FileSystem.getInfoAsync(clientFilePath);
+      if (!fileExists.exists) {
+        await FileSystem.writeAsStringAsync(clientFilePath, '[]');
+      }
+      const fileContents = await FileSystem.readAsStringAsync(clientFilePath);
+      const parsedClientList = JSON.parse(fileContents);
+      parsedClientList.splice(indexOfClient, 1);
+      FileSystem.writeAsStringAsync(clientFilePath, JSON.stringify(parsedClientList));
+      setClientList(parsedClientList);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   useEffect(() => {
     readClientList();
   }, []);
@@ -73,7 +91,10 @@ export default function ClientsScreen({navigation}) {
             <View style={styles.clientBoxContainer}>
               {isLoaded ? (
                 filteredClients.map((client, index) => ( 
-                <Pressable style={styles.clientBox} onPress={() => { navigation.navigate('Products', {clientName: client.name})}} key={index}>
+                <Pressable style={styles.clientBox} 
+                onPress={() => { navigation.navigate('Products', {clientName: client.name})}} 
+                onLongPress={() => {setIndexOfClient(index), setModalClientDelVisible(true)}} 
+                key={index}>
                   <Text style={styles.clientBoxText}>{client.name}</Text>
                 </Pressable>
                 ))
@@ -121,6 +142,37 @@ export default function ClientsScreen({navigation}) {
                   title="Ajouter"
                   color="#19A7CE"
                   accessibilityLabel="Ajouter un nouveau client"
+                />
+              </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalClientDelVisible}
+        onRequestClose={() => {
+          setModalClientDelVisible(!modalClientDelVisible);
+        }}
+        >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Confirmation suppression client</Text>
+              <Text>Nom client : {clientList && clientList[indexOfClient] ? clientList[indexOfClient].name : '--'}</Text>
+              <View style={{ flexWrap: 'wrap', marginTop: 10, flexDirection: 'row', width: '100%', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <Button
+                  onPress={() => {setModalClientDelVisible(!modalClientDelVisible), deleteClient()}}
+                  title="Supprimer"
+                  color="#FF1111"
+                  accessibilityLabel="Supprimer"
+                />
+                <Button
+                  onPress={() => {
+                    setModalClientDelVisible(false)
+                  }}
+                  title="Annuler"
+                  color="#19A7CE"
+                  accessibilityLabel="Annuler"
                 />
               </View>
           </View>
